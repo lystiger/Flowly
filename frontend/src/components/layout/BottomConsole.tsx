@@ -5,7 +5,7 @@ import clsx from 'clsx';
 
 export function BottomConsole() {
   const [isExpanded, setIsExpanded] = useState(true);
-  const { history, latestPacket } = useWebSocket();
+  const { latestPacket } = useWebSocket();
   const [logs, setLogs] = useState<{ t: string; msg: string; type: 'info' | 'warn' | 'error' | 'data' }[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 

@@ -31,16 +31,23 @@ export function CalibrationProfileBar({
   };
 
   return (
-    <section className="flex items-center gap-3 p-3 bg-zinc-900/50 border border-zinc-800 rounded-lg">
+    <section className="flex items-center gap-3 p-2 bg-black border border-zinc-800 rounded-sm shadow-[0_-10px_30px_rgba(0,0,0,0.5)] relative overflow-hidden">
+      {/* Decorative scanner line */}
+      <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-zinc-700 to-transparent opacity-20" />
+      {/* Corner accents */}
+      <div className="absolute top-0 left-0 w-1 h-1 border-t border-l border-zinc-600" />
+      <div className="absolute bottom-0 right-0 w-1 h-1 border-b border-r border-zinc-600" />
+      
       {/* Profile name input */}
       <div className="flex items-center gap-2">
-        <span className="text-[9px] font-mono uppercase tracking-widest text-zinc-600 shrink-0">Profile</span>
+        <span className="text-[9px] font-mono uppercase tracking-widest text-zinc-500 shrink-0">ID:</span>
         <input
           type="text"
           value={profileName}
           onChange={e => onRename(e.target.value)}
           maxLength={32}
-          className="w-40 h-7 bg-zinc-900 border border-zinc-700 rounded px-2 text-[11px] font-mono text-zinc-200 focus:outline-none focus:border-cyan-600 transition-colors"
+          className="w-48 h-6 bg-zinc-950 border border-zinc-800 px-2 text-[10px] font-mono text-cyan-500 focus:outline-none focus:border-cyan-700 transition-colors selection:bg-cyan-900 selection:text-white placeholder:text-zinc-800"
+          placeholder="NAME_RECORD..."
         />
       </div>
 
@@ -51,14 +58,14 @@ export function CalibrationProfileBar({
         onClick={handleSave}
         disabled={!isReadyToSave}
         className={clsx(
-          'flex items-center gap-1.5 h-7 px-3 rounded text-[10px] font-mono font-semibold transition-colors duration-100 disabled:opacity-30 disabled:cursor-not-allowed',
+          'flex items-center gap-1.5 h-6 px-3 rounded-sm text-[9px] font-mono font-bold transition-all duration-75 disabled:opacity-10 disabled:grayscale disabled:cursor-not-allowed uppercase tracking-tighter',
           savedFlash
-            ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-400'
-            : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700'
+            ? 'bg-emerald-500 text-black shadow-[0_0_15px_rgba(16,185,129,0.4)]'
+            : 'bg-zinc-900 hover:bg-cyan-900/20 text-zinc-400 border border-zinc-800 hover:border-cyan-800 hover:text-cyan-400'
         )}
       >
-        {savedFlash ? <Check size={11} /> : <Save size={11} />}
-        {savedFlash ? 'Saved' : 'Save'}
+        {savedFlash ? <Check size={10} strokeWidth={3} /> : <Save size={10} />}
+        {savedFlash ? 'EXEC_SUCCESS' : 'SAVE_PARAM'}
       </button>
 
       {/* Load */}
@@ -66,21 +73,22 @@ export function CalibrationProfileBar({
         <button
           onClick={() => setShowLoader(v => !v)}
           disabled={profileList.length === 0}
-          className="flex items-center gap-1.5 h-7 px-3 rounded text-[10px] font-mono text-zinc-400 hover:text-zinc-200 border border-zinc-800 hover:border-zinc-600 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="flex items-center gap-1.5 h-6 px-3 rounded-sm text-[9px] font-mono text-zinc-500 hover:text-cyan-400 border border-zinc-800 hover:border-cyan-900 transition-colors disabled:opacity-20 uppercase tracking-tighter"
         >
           <FolderOpen size={11} />
-          Load
+          FETCH
           {profileList.length > 0 && (
-            <span className="ml-0.5 text-[9px] text-zinc-600">({profileList.length})</span>
+            <span className="ml-1 text-[8px] px-1 bg-zinc-800 rounded text-zinc-400">{profileList.length}</span>
           )}
         </button>
 
         {showLoader && profileList.length > 0 && (
-          <div className="absolute top-full left-0 mt-1 w-48 bg-zinc-900 border border-zinc-700 rounded shadow-xl z-50">
+          <div className="absolute bottom-full left-0 mb-2 w-56 bg-black border border-zinc-700 shadow-[0_0_30px_rgba(0,0,0,0.8)] z-50 overflow-hidden">
+            <div className="bg-zinc-900 px-2 py-1 border-b border-zinc-800 text-[8px] font-mono text-zinc-500">AVAILABLE_SLOTS</div>
             {profileList.map(name => (
               <div
                 key={name}
-                className="flex items-center justify-between px-3 py-1.5 hover:bg-zinc-800 group"
+                className="flex items-center justify-between px-3 py-1.5 hover:bg-cyan-950/30 group transition-colors border-b border-zinc-900/50 last:border-0"
               >
                 <button
                   onClick={() => { onLoad(name); setShowLoader(false); }}
@@ -110,9 +118,14 @@ export function CalibrationProfileBar({
       <div className="flex-1" />
 
       {/* Ready state hint */}
-      {!isReadyToSave && (
-        <span className="text-[9px] font-mono text-zinc-700">
-          Capture both poses to save
+      {!isReadyToSave ? (
+        <span className="text-[9px] font-mono text-zinc-700 italic flex items-center gap-2">
+          <span className="w-1 h-1 bg-zinc-800 animate-pulse" />
+          AWAITING_CALIB_DATA_LOCK...
+        </span>
+      ) : (
+        <span className="text-[9px] font-mono text-emerald-900 font-bold tracking-tighter">
+          CAL_RDY_v1.0
         </span>
       )}
     </section>

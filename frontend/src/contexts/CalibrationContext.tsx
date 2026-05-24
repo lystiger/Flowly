@@ -30,7 +30,7 @@ function averageSnapshots(samples: CalibrationSnapshot[]): CalibrationSnapshot {
   for (const s of samples) FINGERS.forEach(f => { sums[f] += s[f]; });
   return Object.fromEntries(
     FINGERS.map(f => [f, Math.round(sums[f] / samples.length)])
-  ) as CalibrationSnapshot;
+  ) as unknown as CalibrationSnapshot;
 }
 
 function computeNormalized(

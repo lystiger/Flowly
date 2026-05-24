@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    @apply bg-zinc-950 text-zinc-200 antialiased selection:bg-cyan-500/30 overflow-hidden;
+    font-feature-settings: "tnum" on, "lnum" on;
+  }
+
+  ::-webkit-scrollbar {
+    @apply w-1.5 h-1.5 bg-transparent;
+  }
+}
