@@ -1,7 +1,7 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.api import routes_health
+from app.api import routes_health, routes_devices
 from app.realtime.websocket_manager import manager
 from app.realtime.broadcaster import mock_reader
 import asyncio
@@ -17,6 +17,7 @@ app.add_middleware(
 )
 
 app.include_router(routes_health.router)
+app.include_router(routes_devices.router)
 
 @app.websocket("/ws/live")
 async def websocket_endpoint(websocket: WebSocket):
