@@ -68,3 +68,30 @@ export interface IMUChartDataPoint {
   yaw: number;
   accelMag: number; // magnitude of acceleration vector
 }
+
+export interface LatencyPoint {
+  t: number;
+  latencyMs: number;
+}
+
+export interface ThroughputPoint {
+  t: number;
+  packetsPerSec: number;
+}
+
+export type FlowEventKind = 'drop' | 'parse_error' | 'reconnect' | 'spike';
+
+export interface FlowEvent {
+  id: number;
+  t: number;
+  kind: FlowEventKind;
+  detail: string;
+}
+
+export interface FlowHealthState {
+  latencyHistory: LatencyPoint[];
+  throughputHistory: ThroughputPoint[];
+  parseErrors: number;
+  events: FlowEvent[];
+  jitterMs: number;
+}

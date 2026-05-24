@@ -4,6 +4,7 @@ import { TopStatusBar } from './TopStatusBar';
 import { BottomConsole } from './BottomConsole';
 import { LiveMonitorPage } from '../../pages/LiveMonitor/LiveMonitorPage';
 import { CalibrationPage } from '../../pages/Calibration/CalibrationPage';
+import { FlowHealthPage } from '../../pages/FlowHealth/FlowHealthPage';
 
 function PageNotBuilt({ label }: { label: string }) {
   return (
@@ -21,7 +22,7 @@ export function AppShell() {
     switch (activePage) {
       case 'live-monitor':     return <LiveMonitorPage />;
       case 'calibration':      return <CalibrationPage />;
-      case 'flow-health':      return <PageNotBuilt label="Flow Health" />;
+      case 'flow-health':      return <FlowHealthPage />;
       case 'session-recorder': return <PageNotBuilt label="Session Recorder" />;
     }
   };

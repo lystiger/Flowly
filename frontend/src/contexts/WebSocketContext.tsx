@@ -1,3 +1,5 @@
+/* eslint-disable react-refresh/only-export-components */
+
 import React, {
   createContext,
   useCallback,
@@ -6,27 +8,46 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import type { SensorPacket, ConnectionState } from '../types/sensor';
+import type {
+  ConnectionState,
+  FlowEvent,
+  FlowEventKind,
+  FlowHealthState,
+  LatencyPoint,
+  SensorPacket,
+  ThroughputPoint,
+} from '../types/sensor';
 import { generateMockPacket } from '../utils/sensorGenerator';
-
-// ─── Types ───────────────────────────────────────────────────────────────────
 
 interface WebSocketContextValue {
   connection: ConnectionState;
   latestPacket: SensorPacket | null;
-  history: SensorPacket[];           // rolling window, last N packets
+  history: SensorPacket[];
+  flowHealth: FlowHealthState;
   useMock: boolean;
   toggleMock: () => void;
 }
 
-const HISTORY_LIMIT = 120; // ~4 seconds at 30Hz
-const MOCK_INTERVAL_MS = 33; // ~30Hz
+const HISTORY_LIMIT = 120;
+const MOCK_INTERVAL_MS = 33;
+const LATENCY_HISTORY_MAX = 300;
+const THROUGHPUT_HISTORY_MAX = 60;
+const EVENT_LOG_MAX = 100;
 
-// ─── Context ─────────────────────────────────────────────────────────────────
+let eventIdCounter = 0;
+
+function makeEvent(kind: FlowEventKind, detail: string): FlowEvent {
+  return { id: ++eventIdCounter, t: Date.now(), kind, detail };
+}
+
+function stddev(values: number[]): number {
+  if (values.length < 2) return 0;
+  const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const variance = values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length;
+  return Math.sqrt(variance);
+}
 
 const WebSocketContext = createContext<WebSocketContextValue | null>(null);
-
-// ─── Provider ────────────────────────────────────────────────────────────────
 
 export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const [latestPacket, setLatestPacket] = useState<SensorPacket | null>(null);
@@ -40,14 +61,37 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     totalPackets: 0,
     lastPacketAt: null,
   });
+  const [flowHealth, setFlowHealth] = useState<FlowHealthState>({
+    latencyHistory: [],
+    throughputHistory: [],
+    parseErrors: 0,
+    events: [],
+    jitterMs: 0,
+  });
 
   const mockTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const packetCountRef = useRef(0);
   const rateTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const packetCountRef = useRef(0);
+  const latencyBufferRef = useRef<number[]>([]);
 
-  // ── Packet ingestion ──────────────────────────────────────────────────────
-  const ingestPacket = useCallback((packet: SensorPacket) => {
+  const pushEvent = useCallback((kind: FlowEventKind, detail: string) => {
+    const event = makeEvent(kind, detail);
+    setFlowHealth(prev => ({
+      ...prev,
+      events: [event, ...prev.events].slice(0, EVENT_LOG_MAX),
+    }));
+  }, []);
+
+  const ingestPacket = useCallback((packet: SensorPacket, latencyMs: number) => {
     packetCountRef.current += 1;
+
+    if (latencyMs > 40) {
+      pushEvent('spike', `Latency spike: ${latencyMs}ms`);
+    }
+
+    latencyBufferRef.current = [...latencyBufferRef.current.slice(-9), latencyMs];
+    const jitterMs = stddev(latencyBufferRef.current);
+    const latencyPoint: LatencyPoint = { t: packet.timestamp, latencyMs };
 
     setLatestPacket(packet);
     setHistory(prev => {
@@ -56,12 +100,28 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     });
     setConnection(prev => ({
       ...prev,
+      latencyMs,
       totalPackets: prev.totalPackets + 1,
       lastPacketAt: packet.timestamp,
     }));
+    setFlowHealth(prev => ({
+      ...prev,
+      jitterMs,
+      latencyHistory: [...prev.latencyHistory, latencyPoint].slice(-LATENCY_HISTORY_MAX),
+    }));
+  }, [pushEvent]);
+
+  const flushThroughput = useCallback(() => {
+    const rate = packetCountRef.current;
+    packetCountRef.current = 0;
+    const throughputPoint: ThroughputPoint = { t: Date.now(), packetsPerSec: rate };
+    setConnection(prev => ({ ...prev, packetRate: rate }));
+    setFlowHealth(prev => ({
+      ...prev,
+      throughputHistory: [...prev.throughputHistory, throughputPoint].slice(-THROUGHPUT_HISTORY_MAX),
+    }));
   }, []);
 
-  // ── Mock pipeline ─────────────────────────────────────────────────────────
   const startMock = useCallback(() => {
     setConnection({
       status: 'connected',
@@ -71,71 +131,114 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       totalPackets: 0,
       lastPacketAt: null,
     });
+    setHistory([]);
+    setLatestPacket(null);
+    packetCountRef.current = 0;
+    latencyBufferRef.current = [];
+    setFlowHealth({
+      latencyHistory: [],
+      throughputHistory: [],
+      parseErrors: 0,
+      events: [makeEvent('reconnect', 'Mock pipeline started')],
+      jitterMs: 0,
+    });
 
     mockTimerRef.current = setInterval(() => {
       const packet = generateMockPacket();
-      // Simulate occasional latency spike
-      const fakeLatency = Math.round(Math.random() < 0.05 ? 40 + Math.random() * 60 : 2 + Math.random() * 8);
-      setConnection(prev => ({ ...prev, latencyMs: fakeLatency }));
-      ingestPacket(packet);
+      const latencyMs = Math.round(Math.random() < 0.04 ? 45 + Math.random() * 70 : 2 + Math.random() * 9);
+
+      if (Math.random() < 0.008) {
+        setConnection(prev => ({ ...prev, droppedPackets: prev.droppedPackets + 1 }));
+        pushEvent('drop', `Seq gap detected at #${packet.sequenceId}`);
+        return;
+      }
+
+      if (Math.random() < 0.004) {
+        setFlowHealth(prev => ({ ...prev, parseErrors: prev.parseErrors + 1 }));
+        pushEvent('parse_error', 'Malformed JSON frame');
+        return;
+      }
+
+      ingestPacket(packet, latencyMs);
     }, MOCK_INTERVAL_MS);
 
-    // Packet rate counter — updates every second
-    rateTimerRef.current = setInterval(() => {
-      const rate = packetCountRef.current;
-      packetCountRef.current = 0;
-      setConnection(prev => ({ ...prev, packetRate: rate }));
-    }, 1000);
-  }, [ingestPacket]);
+    rateTimerRef.current = setInterval(flushThroughput, 1000);
+  }, [flushThroughput, ingestPacket, pushEvent]);
 
   const stopMock = useCallback(() => {
     if (mockTimerRef.current) clearInterval(mockTimerRef.current);
     if (rateTimerRef.current) clearInterval(rateTimerRef.current);
+    mockTimerRef.current = null;
+    rateTimerRef.current = null;
     setConnection(prev => ({ ...prev, status: 'disconnected', packetRate: 0 }));
   }, []);
 
-  // ── Real WebSocket (swap-in point) ────────────────────────────────────────
-  // When useMock=false, connect to ws://localhost:8000/ws/sensor
-  // and call ingestPacket(JSON.parse(event.data)) on each message.
-  // This block is intentionally stubbed — do not delete it.
   const startRealWS = useCallback(() => {
     setConnection(prev => ({ ...prev, status: 'reconnecting' }));
     const ws = new WebSocket('ws://localhost:8000/ws/sensor');
-    ws.onopen = () => setConnection(prev => ({ ...prev, status: 'connected' }));
-    ws.onmessage = (e) => {
+
+    ws.onopen = () => {
+      setConnection(prev => ({ ...prev, status: 'connected' }));
+      pushEvent('reconnect', 'WebSocket connected');
+      rateTimerRef.current = setInterval(flushThroughput, 1000);
+    };
+
+    ws.onmessage = (event) => {
+      const receivedAt = Date.now();
       try {
-        const packet: SensorPacket = JSON.parse(e.data);
-        ingestPacket(packet);
+        const packet: SensorPacket = JSON.parse(event.data);
+        ingestPacket(packet, Math.max(0, receivedAt - packet.timestamp));
       } catch {
         setConnection(prev => ({ ...prev, droppedPackets: prev.droppedPackets + 1 }));
+        setFlowHealth(prev => ({ ...prev, parseErrors: prev.parseErrors + 1 }));
+        pushEvent('parse_error', 'Failed to parse incoming frame');
       }
     };
-    ws.onerror = () => setConnection(prev => ({ ...prev, status: 'error' }));
-    ws.onclose = () => setConnection(prev => ({ ...prev, status: 'disconnected' }));
-    return ws;
-  }, [ingestPacket]);
 
-  // ── Lifecycle ─────────────────────────────────────────────────────────────
+    ws.onerror = () => {
+      setConnection(prev => ({ ...prev, status: 'error' }));
+      pushEvent('drop', 'WebSocket error event');
+    };
+
+    ws.onclose = () => {
+      setConnection(prev => ({ ...prev, status: 'disconnected' }));
+      if (rateTimerRef.current) clearInterval(rateTimerRef.current);
+      rateTimerRef.current = null;
+    };
+
+    return ws;
+  }, [flushThroughput, ingestPacket, pushEvent]);
+
   useEffect(() => {
     if (useMock) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       startMock();
       return () => stopMock();
-    } else {
-      const ws = startRealWS();
-      return () => ws.close();
     }
+
+    const ws = startRealWS();
+    return () => {
+      ws.close();
+      if (rateTimerRef.current) clearInterval(rateTimerRef.current);
+      rateTimerRef.current = null;
+    };
   }, [useMock, startMock, stopMock, startRealWS]);
 
   const toggleMock = useCallback(() => setUseMock(v => !v), []);
 
   return (
-    <WebSocketContext.Provider value={{ connection, latestPacket, history, useMock, toggleMock }}>
+    <WebSocketContext.Provider value={{
+      connection,
+      latestPacket,
+      history,
+      flowHealth,
+      useMock,
+      toggleMock,
+    }}>
       {children}
     </WebSocketContext.Provider>
   );
 }
-
-// ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useWebSocket(): WebSocketContextValue {
   const ctx = useContext(WebSocketContext);
