@@ -36,3 +36,6 @@ vite.svg
 
 # typescript
 *.tsbuildinfo
+
+# virtual env
+.venv
