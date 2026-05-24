@@ -95,3 +95,22 @@ export interface FlowHealthState {
   events: FlowEvent[];
   jitterMs: number;
 }
+
+export type RecordingState = 'idle' | 'recording';
+
+export interface RecordedSample {
+  t: number;
+  flex: FlexSensorFrame;
+  imu: IMUFrame;
+}
+
+export interface RecordedSession {
+  id: string;
+  label: string;
+  startedAt: number;
+  endedAt: number;
+  durationMs: number;
+  sampleCount: number;
+  samples: RecordedSample[];
+  packetRate: number;
+}
