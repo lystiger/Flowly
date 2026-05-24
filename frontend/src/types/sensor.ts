@@ -36,6 +36,27 @@ export interface ConnectionState {
   lastPacketAt: number | null;
 }
 
+export type FingerKey = 'thumb' | 'index' | 'middle' | 'ring' | 'pinky';
+
+export type CalibrationSnapshot = FlexSensorFrame;
+
+export interface NormalizedFrame {
+  thumb: number;
+  index: number;
+  middle: number;
+  ring: number;
+  pinky: number;
+}
+
+export interface CalibrationProfile {
+  name: string;
+  createdAt: number;
+  open: CalibrationSnapshot | null;
+  closed: CalibrationSnapshot | null;
+}
+
+export type CapturePhase = 'idle' | 'sampling' | 'done';
+
 export interface ChartDataPoint extends FlexSensorFrame {
   t: number; // timestamp ms
 }

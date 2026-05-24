@@ -1,10 +1,13 @@
 import { WebSocketProvider } from './contexts/WebSocketContext';
+import { CalibrationProvider } from './contexts/CalibrationContext';
 import { AppShell } from './components/layout/AppShell';
 
 function App() {
   return (
     <WebSocketProvider>
-      <AppShell />
+      <CalibrationProvider>
+        <AppShell />
+      </CalibrationProvider>
     </WebSocketProvider>
   );
 }

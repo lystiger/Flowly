@@ -3,6 +3,7 @@ import { Sidebar, type PageId } from './Sidebar';
 import { TopStatusBar } from './TopStatusBar';
 import { BottomConsole } from './BottomConsole';
 import { LiveMonitorPage } from '../../pages/LiveMonitor/LiveMonitorPage';
+import { CalibrationPage } from '../../pages/Calibration/CalibrationPage';
 
 function PageNotBuilt({ label }: { label: string }) {
   return (
@@ -19,7 +20,7 @@ export function AppShell() {
   const renderPage = () => {
     switch (activePage) {
       case 'live-monitor':     return <LiveMonitorPage />;
-      case 'calibration':      return <PageNotBuilt label="Calibration" />;
+      case 'calibration':      return <CalibrationPage />;
       case 'flow-health':      return <PageNotBuilt label="Flow Health" />;
       case 'session-recorder': return <PageNotBuilt label="Session Recorder" />;
     }
