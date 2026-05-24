@@ -1,14 +1,14 @@
 import { useWebSocket } from '../../contexts/WebSocketContext';
-import { StatusBadge } from '../shared/StatusBadge';
-import { MetricChip } from '../shared/MetricChip';
+import { StatusBadge } from '../ui/StatusBadge';
+import { MetricChip } from '../ui/MetricChip';
 import { ToggleLeft, ToggleRight } from 'lucide-react';
 
 export function TopStatusBar() {
   const { connection, useMock, toggleMock } = useWebSocket();
   const { status, latencyMs, packetRate, droppedPackets, totalPackets } = connection;
 
-  const latencyVariant = latencyMs > 50 ? 'danger' : latencyMs > 20 ? 'warn' : 'ok';
-  const dropVariant = droppedPackets > 10 ? 'danger' : droppedPackets > 0 ? 'warn' : 'default';
+  const latencyVariant = latencyMs > 50 ? 'error' : latencyMs > 20 ? 'warning' : 'normal';
+  const dropVariant = droppedPackets > 10 ? 'error' : droppedPackets > 0 ? 'warning' : 'normal';
 
   return (
     <header className="flex items-center gap-6 h-12 px-4 bg-zinc-950 border-b border-zinc-800 shrink-0">

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Sidebar, type PageId } from './Sidebar';
 import { TopStatusBar } from './TopStatusBar';
+import { BottomConsole } from './BottomConsole';
 import { LiveMonitorPage } from '../../pages/LiveMonitor/LiveMonitorPage';
 
 function PageNotBuilt({ label }: { label: string }) {
@@ -25,14 +26,15 @@ export function AppShell() {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-zinc-950 text-zinc-100">
-      <Sidebar activePage={activePage} onNavigate={setActivePage} />
-      <div className="flex flex-col flex-1 min-w-0">
-        <TopStatusBar />
-        <main className="flex-1 overflow-auto">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-zinc-950 text-zinc-100">
+      <TopStatusBar />
+      <div className="flex flex-1 min-h-0">
+        <Sidebar activePage={activePage} onNavigate={setActivePage} />
+        <main className="flex-1 overflow-auto bg-zinc-900/20">
           {renderPage()}
         </main>
       </div>
+      <BottomConsole />
     </div>
   );
 }
