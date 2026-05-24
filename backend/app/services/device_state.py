@@ -10,10 +10,13 @@ class DeviceStateService:
         self.packet_counts: Dict[str, int] = {}
         self.window_start_time: Dict[str, float] = {}
         self.latest_packets: Dict[str, TelemetryPacket] = {}
+        self.clock_offsets: Dict[str, float] = {}
+        self.latency_buffer: Dict[str, list[float]] = {}
 
     def update(self, packet: TelemetryPacket):
         device_id = packet.device_id
         now = time.time()
+        now_ms = now * 1000
         
         self.latest_packets[device_id] = packet
         
@@ -21,21 +24,24 @@ class DeviceStateService:
             self.states[device_id] = DeviceStatus(device_id=device_id)
             self.window_start_time[device_id] = now
             self.packet_counts[device_id] = 0
+            self.latency_buffer[device_id] = []
+            # Initialize clock offset: assume the first packet has 0 network latency
+            self.clock_offsets[device_id] = now_ms - packet.timestamp_ms
 
         state = self.states[device_id]
         
         # Calculate dropped packets from sequence gap
         if state.last_seq != -1:
-            # Handle sequence wrap around if necessary (e.g. 16-bit or 32-bit)
-            # For now assume simple incrementing
             if packet.seq > state.last_seq:
                 gap = packet.seq - state.last_seq - 1
                 if gap > 0:
                     state.dropped_packets += gap
                     state.total_dropped += gap
             elif packet.seq < state.last_seq:
-                # Sequence reset or wrap around
-                pass
+                # Sequence reset likely means a device reboot or wrap-around
+                # Clear clock offset and buffer to avoid latency spikes during recovery
+                self.clock_offsets[device_id] = now_ms - packet.timestamp_ms
+                self.latency_buffer[device_id] = []
         
         state.last_seq = packet.seq
         state.last_seen = datetime.fromtimestamp(packet.received_at or now, tz=timezone.utc)
@@ -44,8 +50,21 @@ class DeviceStateService:
         state.rssi = packet.rssi
         state.status = "online"
         
-        # Simple latency estimate (offset might be large if clocks are not synced)
-        state.latency_ms = (now * 1000) - packet.timestamp_ms
+        # Latency calculation:
+        # 1. Calculate raw latency based on initial offset
+        # 2. Update offset if we see a "faster" packet (handles clock drift)
+        current_offset = now_ms - packet.timestamp_ms
+        if current_offset < self.clock_offsets[device_id]:
+            self.clock_offsets[device_id] = current_offset
+            
+        raw_latency = current_offset - self.clock_offsets[device_id]
+        
+        # Smoothing latency with a small moving average
+        self.latency_buffer[device_id].append(raw_latency)
+        if len(self.latency_buffer[device_id]) > 10:
+            self.latency_buffer[device_id].pop(0)
+        
+        state.latency_ms = sum(self.latency_buffer[device_id]) / len(self.latency_buffer[device_id])
         
         # Update packet rate windowed
         self.packet_counts[device_id] += 1

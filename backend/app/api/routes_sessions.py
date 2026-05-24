@@ -8,7 +8,10 @@ router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
 @router.post("/start", response_model=SessionRecord)
 async def start_session(request: SessionStartRequest):
-    return session_recorder.start(request)
+    try:
+        return session_recorder.start(request)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 @router.post("/stop", response_model=SessionRecord)

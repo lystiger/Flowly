@@ -9,6 +9,8 @@ class SessionRecorder:
         self._active_id: str | None = None
 
     def start(self, request: SessionStartRequest) -> SessionRecord:
+        if self._active_id:
+            raise ValueError("A session is already active. Stop it before starting a new one.")
         session = SessionRecord(
             label=request.label,
             device_id=request.device_id,

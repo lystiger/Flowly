@@ -6,13 +6,20 @@ from app.main import app
 def test_websocket_ping_pong():
     with TestClient(app) as client:
         with client.websocket_connect("/ws/live") as websocket:
+            # Drain initial status or any early telemetry
             first = websocket.receive_json()
             assert first["type"] in {"device_status", "telemetry"}
 
             websocket.send_json({"type": "ping"})
-            response = websocket.receive_json()
-
-            assert response == {"type": "pong"}
+            
+            # Since mock reader is running at 50Hz, we might get telemetry 
+            # before the pong. Wait for pong specifically.
+            for _ in range(100):
+                response = websocket.receive_json()
+                if response["type"] == "pong":
+                    return
+            
+            raise AssertionError("Did not receive pong response")
 
 
 def test_websocket_receives_mock_telemetry_shape():

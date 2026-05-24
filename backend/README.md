@@ -13,6 +13,14 @@ pip install -r requirements.txt
 
 Copy `.env.example` to `.env` if you want to override defaults. `DATA_MODE=mock` runs without a serial device.
 
+For real glove testing, use serial mode:
+
+```ini
+DATA_MODE=serial
+SERIAL_PORT=COM3
+SERIAL_BAUDRATE=115200
+```
+
 ## Run
 
 ```bash
@@ -30,6 +38,60 @@ app.main:app
 ```bash
 pytest
 ```
+
+## Arduino IDE Serial Setup
+
+Arduino IDE is only needed to upload the glove sketch. During Flowly runtime, close Arduino Serial Monitor and Serial Plotter so the backend can open the serial port.
+
+The sketch should print one complete JSON packet per line:
+
+```cpp
+Serial.println(jsonString);
+```
+
+The sketch baud rate must match `SERIAL_BAUDRATE`, normally `115200`.
+
+### Windows
+
+1. Install Arduino IDE and the ESP32 board package if needed.
+2. Upload the glove sketch.
+3. Close Serial Monitor and Serial Plotter.
+4. Find the port in `Tools > Port` or Device Manager, for example `COM3`.
+5. Set `.env`:
+
+```ini
+DATA_MODE=serial
+SERIAL_PORT=COM3
+SERIAL_BAUDRATE=115200
+```
+
+### Linux
+
+1. Install Arduino IDE and the ESP32 board package if needed.
+2. Add your user to the serial group, usually `dialout`, then log out and back in:
+
+```bash
+sudo usermod -aG dialout $USER
+```
+
+3. Upload the glove sketch.
+4. Close Serial Monitor and Serial Plotter.
+5. Find the port:
+
+```bash
+ls /dev/ttyUSB*
+ls /dev/ttyACM*
+```
+
+6. Set `.env`:
+
+```ini
+DATA_MODE=serial
+SERIAL_PORT=/dev/ttyUSB0
+SERIAL_BAUDRATE=115200
+```
+
+If the backend logs that the port is busy or unavailable, close Arduino IDE serial tools and confirm the port name.
 
 ## Main Endpoints
 

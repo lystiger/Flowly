@@ -55,6 +55,67 @@ cd frontend
 npm run build
 ```
 
+## Arduino IDE Hardware Setup
+
+Flowly does not need special Arduino IDE integration. The Arduino IDE is used to upload the glove firmware; after upload, the backend owns the serial port.
+
+The glove sketch must send one complete JSON object per line:
+
+```cpp
+Serial.println(jsonString);
+```
+
+The backend expects the baud rate to match:
+
+```ini
+DATA_MODE=serial
+SERIAL_BAUDRATE=115200
+```
+
+### Windows
+
+1. Install Arduino IDE.
+2. Install the ESP32 board package in Arduino IDE if the glove uses ESP32.
+3. Upload the glove sketch.
+4. Close Arduino Serial Monitor and Serial Plotter.
+5. Find the board port in `Tools > Port` or Windows Device Manager, for example `COM3`.
+6. Set backend `.env`:
+
+```ini
+DATA_MODE=serial
+SERIAL_PORT=COM3
+SERIAL_BAUDRATE=115200
+```
+
+### Linux
+
+1. Install Arduino IDE.
+2. Install the ESP32 board package in Arduino IDE if the glove uses ESP32.
+3. Add your user to the serial group, usually `dialout`, then log out and back in:
+
+```bash
+sudo usermod -aG dialout $USER
+```
+
+4. Upload the glove sketch.
+5. Close Arduino Serial Monitor and Serial Plotter.
+6. Find the board port:
+
+```bash
+ls /dev/ttyUSB*
+ls /dev/ttyACM*
+```
+
+7. Set backend `.env`:
+
+```ini
+DATA_MODE=serial
+SERIAL_PORT=/dev/ttyUSB0
+SERIAL_BAUDRATE=115200
+```
+
+Important: only one program can usually read the serial port at a time. If Arduino Serial Monitor is open, the backend may fail to connect.
+
 ## Team Workflow
 
 1. Open **Live Monitor** and confirm the app is receiving mock or real packets.

@@ -16,6 +16,7 @@ from app.config import settings
 from app.ingest.serial_reader import SerialReader
 from app.realtime.broadcaster import build_device_status_payload, handle_packet, mock_reader
 from app.realtime.websocket_manager import manager
+from app.services.device_state import device_state_service
 from app.services.log_service import log_service
 
 serial_reader = SerialReader(settings.SERIAL_PORT, settings.SERIAL_BAUDRATE)
@@ -58,18 +59,30 @@ app.include_router(routes_sessions.router)
 
 
 @app.websocket("/ws/live")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_live_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
-    await websocket.send_json(build_device_status_payload())
+    # Administrative stream: send initial status
+    await websocket.send_json(build_device_status_payload("glove_right_01"))
     try:
         while True:
             data = await websocket.receive_text()
-            try:
-                message = json.loads(data)
-            except json.JSONDecodeError:
-                message = {"type": data}
-            if message.get("type") == "ping" or "ping" in data:
+            if "ping" in data:
                 await websocket.send_json({"type": "pong"})
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
+
+@app.websocket("/ws/sensor")
+async def websocket_sensor_endpoint(websocket: WebSocket):
+    """
+    Strict telemetry stream for frontend compatibility.
+    Does not send status messages that could break the parser.
+    """
+    await manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            if "ping" in data:
+                await websocket.send_json({"type": "pong"})
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)

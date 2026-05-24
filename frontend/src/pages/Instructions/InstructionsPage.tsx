@@ -38,6 +38,27 @@ const TEAM_RULES = [
   'Log backend or hardware problems only after checking Flow Health.',
 ];
 
+const ARDUINO_SETUP = [
+  {
+    platform: 'Windows',
+    steps: [
+      'Install Arduino IDE and the ESP32 board package.',
+      'Upload the glove sketch, then close Serial Monitor and Serial Plotter.',
+      'Find the board port in Tools > Port or Device Manager, for example COM3.',
+      'Set backend .env to DATA_MODE=serial, SERIAL_PORT=COM3, SERIAL_BAUDRATE=115200.',
+    ],
+  },
+  {
+    platform: 'Linux',
+    steps: [
+      'Install Arduino IDE and the ESP32 board package.',
+      'Add your user to the serial group, usually dialout, then log out and back in.',
+      'Find the board port with ls /dev/ttyUSB* or ls /dev/ttyACM*.',
+      'Set backend .env to DATA_MODE=serial, SERIAL_PORT=/dev/ttyUSB0, SERIAL_BAUDRATE=115200.',
+    ],
+  },
+];
+
 export function InstructionsPage() {
   return (
     <div className="flex flex-col h-full">
@@ -98,6 +119,37 @@ export function InstructionsPage() {
                   </div>
                 ))}
               </div>
+            </section>
+
+            <section className="p-4 bg-zinc-900/50 border border-zinc-800 rounded-lg">
+              <div className="flex items-center gap-2 mb-3">
+                <Wifi size={14} className="text-amber-400" />
+                <h2 className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">
+                  Arduino IDE Setup
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {ARDUINO_SETUP.map(group => (
+                  <div key={group.platform} className="p-3 rounded border border-zinc-800 bg-zinc-950/40">
+                    <h3 className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-300 mb-2">
+                      {group.platform}
+                    </h3>
+                    <div className="flex flex-col gap-1.5">
+                      {group.steps.map((step, index) => (
+                        <div key={step} className="flex gap-2 text-[10px] leading-4 text-zinc-600">
+                          <span className="font-mono text-zinc-700 tabular-nums">{index + 1}.</span>
+                          <span>{step}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] leading-5 text-zinc-600 mt-3">
+                The sketch must print one complete JSON object per line with Serial.println. Keep the
+                baud rate matched to the backend, and do not leave Arduino Serial Monitor open while
+                Flowly is reading the port.
+              </p>
             </section>
           </section>
 
