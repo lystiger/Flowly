@@ -407,13 +407,82 @@ pytest
 - `pytest-asyncio`
 - `httpx`
 
+## Database Schema
+
+### Tables
+
+#### 1. `calibration_profiles`
+- `id`: INTEGER (PK)
+- `device_id`: TEXT
+- `name`: TEXT
+- `data`: JSON (min/max values for sensors)
+- `is_active`: BOOLEAN
+- `created_at`: TIMESTAMP
+
+#### 2. `sessions`
+- `id`: TEXT (UUID, PK)
+- `label`: TEXT (gesture name)
+- `start_time`: TIMESTAMP
+- `end_time`: TIMESTAMP
+- `sample_count`: INTEGER
+- `device_id`: TEXT
+- `notes`: TEXT
+
+#### 3. `telemetry_logs` (Optional/Buffered)
+- `id`: INTEGER (PK)
+- `session_id`: TEXT (FK)
+- `timestamp_ms`: INTEGER
+- `flex_data`: JSON
+- `imu_data`: JSON
+
+#### 4. `system_logs`
+- `id`: INTEGER (PK)
+- `timestamp`: TIMESTAMP
+- `level`: TEXT
+- `source`: TEXT
+- `message`: TEXT
+
+## AI Pipeline details
+
+### 8. Feature Extractor
+**Responsibilities:**
+- Maintain a rolling window of telemetry (e.g., 50-100 samples).
+- Calculate statistical features over the window (mean, std, min, max, delta).
+- Extract frequency domain features for IMU (FFT magnitude).
+- Calculate finger interaction features (relative distance between flex sensors).
+- Format feature vectors for model input.
+
+**Windowing:**
+- `Window Size`: 500ms (25 samples @ 50Hz)
+- `Stride`: 100ms (5 samples)
+
+### 9. Inference Service
+**Responsibilities:**
+- Load pre-trained ONNX or TFLite models.
+- Run inference on feature vectors.
+- Provide a confidence score for detected gestures.
+- Support a "no gesture" or "static" class.
+- Emit `gesture_detected` events via WebSocket.
+
+## Frontend Compatibility Layer
+To ensure the backend works with the existing frontend dashboard without immediate massive refactoring, provide a transformation layer.
+
+**Mapping:**
+- `sequenceId` <- `seq`
+- `timestamp` <- `timestamp_ms`
+- `flex`: Transform nested `{"thumb": {"raw": 512, ...}}` to flat `{"thumb": 512, ...}`
+- `imu`: Transform nested `accel`, `gyro` to flat `accelX`, `accelY`, `accelZ`, etc.
+
 ## Implementation Priority
 1. **Phase 1 — Backend Skeleton:** FastAPI app, health route, config, mock reader, websocket endpoint
 2. **Phase 2 — Telemetry Pipeline:** packet model, parser, mock packet generator, device state service, websocket broadcast loop
 3. **Phase 3 — Calibration:** calibration model, normalization, profile save/load, calibration routes
 4. **Phase 4 — Serial Input:** pyserial reader, reconnect handling, serial config, invalid packet protection
-5. **Phase 5 — Logs and Sessions:** log service, session recorder, logs endpoint, session endpoint
-6. **Phase 6 — AI Placeholder:** feature extractor, fake inference output, model-ready interface
+5. **Phase 5 — Logs and Sessions:** log service, session recorder, logs endpoint, session endpoint, SQLite integration
+6. **Phase 6 — AI Pipeline Skeleton:** feature extractor (windowing), model loader placeholder, inference route
+7. **Phase 7 — Frontend Alignment:** update WebSocket payload to match frontend `SensorPacket` type, fix endpoint naming
+8. **Phase 8 — Advanced Filtering:** implementation of Signal Filter Service (EMA, Butterworth, etc.)
+9. **Phase 9 — Productionization:** error recovery, multi-client support, performance profiling
 
 ## Important Design Rules
 - Do not block the FastAPI event loop.
@@ -426,6 +495,7 @@ pytest
 - Keep AI inference optional and isolated.
 - Prioritize stability before advanced features.
 - The backend must be easy to test.
+- **Compatibility:** Ensure telemetry broadcasts include a `compat` field or follow the frontend schema directly to avoid breakage.
 
 ## Final Goal
 The backend should make this possible:

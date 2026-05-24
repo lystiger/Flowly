@@ -26,9 +26,11 @@ class TelemetryPacket(BaseModel):
     device_id: str
     seq: int
     timestamp_ms: int
-    flex: List[int] = Field(..., min_items=5, max_items=5)
+    flex: List[int] = Field(..., min_length=5, max_length=5)
     imu: IMUData
     battery: int
     rssi: int
     source: str
     received_at: Optional[float] = None
+
+    model_config = {"populate_by_name": True}

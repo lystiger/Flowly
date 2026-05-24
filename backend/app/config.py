@@ -1,6 +1,9 @@
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 
 class Settings(BaseSettings):
+    model_config = ConfigDict(env_file=".env", extra="ignore")
+
     APP_NAME: str = "GloveFlow Backend"
     APP_ENV: str = "development"
     HOST: str = "127.0.0.1"
@@ -14,8 +17,5 @@ class Settings(BaseSettings):
     MAX_ROLLING_WINDOW: int = 300
     
     DATABASE_URL: str = "sqlite:///./gloveflow.db"
-
-    class Config:
-        env_file = ".env"
 
 settings = Settings()
