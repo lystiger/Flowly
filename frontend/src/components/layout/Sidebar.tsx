@@ -5,11 +5,12 @@ import {
   Sliders,
   GitBranch,
   Radio,
+  BookOpen,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
 
-export type PageId = 'live-monitor' | 'calibration' | 'flow-health' | 'session-recorder';
+export type PageId = 'live-monitor' | 'calibration' | 'flow-health' | 'session-recorder' | 'instructions';
 
 interface NavItem {
   id: PageId;
@@ -23,6 +24,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'calibration',       label: 'Calibration',       icon: Sliders },
   { id: 'flow-health',       label: 'Flow Health',       icon: GitBranch },
   { id: 'session-recorder',  label: 'Session Recorder',  icon: Radio },
+  { id: 'instructions',      label: 'Instructions',      icon: BookOpen },
 ];
 
 interface SidebarProps {

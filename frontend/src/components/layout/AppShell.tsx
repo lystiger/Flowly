@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CalibrationPage } from '../../pages/Calibration/CalibrationPage';
 import { FlowHealthPage } from '../../pages/FlowHealth/FlowHealthPage';
+import { InstructionsPage } from '../../pages/Instructions/InstructionsPage';
 import { LiveMonitorPage } from '../../pages/LiveMonitor/LiveMonitorPage';
 import { SessionRecorderPage } from '../../pages/SessionRecorder/SessionRecorderPage';
 import { BottomConsole } from './BottomConsole';
@@ -20,6 +21,8 @@ export function AppShell() {
         return <FlowHealthPage />;
       case 'session-recorder':
         return <SessionRecorderPage />;
+      case 'instructions':
+        return <InstructionsPage />;
     }
   };
 
